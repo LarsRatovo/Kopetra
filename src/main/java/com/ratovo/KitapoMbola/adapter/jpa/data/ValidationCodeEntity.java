@@ -6,20 +6,23 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
+
 @Entity
-@Table(name = "wip")
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class WipUserEntity {
-
+@Table(name = "validation_code")
+public class ValidationCodeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String email;
-    private String uuid;
-    private String firstName;
-    private String lastName;
-    private boolean valid;
+    private String code;
+    private String targetUuid;
+    private String type;
+    private Timestamp createdAt;
+    private Timestamp validatedAt;
+    private Timestamp checkedAt;
+    private Boolean valid;
 }

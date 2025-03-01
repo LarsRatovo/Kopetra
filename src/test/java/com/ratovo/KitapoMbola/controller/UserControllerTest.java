@@ -2,7 +2,10 @@ package com.ratovo.KitapoMbola.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ratovo.KitapoMbola.dto.request.WipUpsertRequestDto;
+import com.ratovo.KitapoMbola.dto.response.UpsertWipResponseDto;
 import com.ratovo.KitapoMbola.exception.EmailAlreadyUsedException;
+import com.ratovo.KitapoMbola.exception.InvalidCodeException;
+import com.ratovo.KitapoMbola.fixture.ValidationCodeFixture;
 import com.ratovo.KitapoMbola.fixture.WipFixture;
 import com.ratovo.KitapoMbola.service.UserService;
 import com.ratovo.KitapoMbola.useCase.UserUseCase;
@@ -16,6 +19,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -36,13 +41,15 @@ public class UserControllerTest {
 
     @Test
     @SneakyThrows
-    void shouldReturnNoBody(){
-        doNothing().when(userUseCase).upsertWipUser(anyString(),any(WipUpsertRequestDto.class));
+    void shouldCreateWipUser(){
+        String uuid = UUID.randomUUID().toString();
+        when(userUseCase.upsertWipUser(anyString(),any(WipUpsertRequestDto.class))).thenReturn(uuid);
         this.mockMvc.perform(
                 MockMvcRequestBuilders.put("/users/wip/{email}", WipFixture.validWip.getEmail())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(WipFixture.validWip))
-        ).andExpect(status().is(HttpStatus.NO_CONTENT.value()));
+        ).andExpect(status().isOk())
+        .andExpect(content().json(objectMapper.writeValueAsString(new UpsertWipResponseDto(uuid))));
     }
 
     @Test
@@ -68,4 +75,49 @@ public class UserControllerTest {
         ).andExpect(status().is(400))
                 .andExpect(jsonPath("messages").value(EmailAlreadyUsedException.defaultMessage));
     }
+
+    @Test
+    @SneakyThrows
+    void shouldValidateCode(){
+        this.mockMvc.perform(
+                MockMvcRequestBuilders.post("/users/wip/{uuid}/validate",WipFixture.wip1.getUuid())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .content("code=%s".formatted(ValidationCodeFixture.ok.getCode()))
+        ).andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(new UpsertWipResponseDto(WipFixture.wip1.getUuid()))));
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldReturnInvalidCode(){
+        doThrow(new InvalidCodeException()).when(userUseCase).validateCode(anyString(),anyString());
+        this.mockMvc.perform(
+                        MockMvcRequestBuilders.post("/users/wip/{uuid}/validate",WipFixture.wip1.getUuid())
+                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                .content("code=invalid")
+                ).andExpect(status().is(400))
+                .andExpect(jsonPath("messages").value(InvalidCodeException.defaultMessage));
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldCreateAccount(){
+        this.mockMvc.perform(
+                MockMvcRequestBuilders.post("/users")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .content("wip=%s&password=%s".formatted("validUuid","abcdeF1;"))
+                ).andExpect(status().isOk());
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldInvalidPassword(){
+        this.mockMvc.perform(
+                MockMvcRequestBuilders.post("/users")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .content("wip=%s&password=%s".formatted("validUuid","invalidPassword"))
+        ).andExpect(status().is(400))
+        .andExpect(jsonPath("messages").value("Le mot de passe est invalide"));
+    }
+
 }
