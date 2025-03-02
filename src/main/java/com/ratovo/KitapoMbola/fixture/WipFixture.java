@@ -10,7 +10,7 @@ import java.util.UUID;
 public class WipFixture {
     public static WipUpsertRequestDto validWip;
     public static WipUpsertRequestDto invalidWip;
-    public static WipUpsertRequestDto nullMailWip;
+    public static WipUpsertRequestDto invalidWip2;
     public static WipUser wip1;
     public static WipUser wip2;
     public static List<WipUser> wipUsers;
@@ -27,9 +27,8 @@ public class WipFixture {
                 .email("invalidEmail")
                 .build();
 
-        nullMailWip = WipUpsertRequestDto.builder()
-                .firstName("firstName")
-                .lastName("lastName")
+        invalidWip2 = WipUpsertRequestDto.builder()
+                .email("invalidEmail")
                 .build();
 
         wip1 = WipUser.builder()

@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface WipUserJpaRepository extends JpaRepository<WipUserEntity, Long> {
     Optional<WipUserEntity> findByEmail(String email);
+
+    Optional<WipUserEntity> findByUuid(String uuid);
 }

@@ -16,6 +16,7 @@ public interface ValidationCodeRepository {
     void save(ValidationCode code);
     void invalidateCodeSentTo(String targetUuid);
     ValidationCode findByCode(String code,String targetUuid);
+    ValidationCode findValidatedCodeByTargetUuid(String targetUuid);
 
     static String generateCode(String key,long timestamp) throws NoSuchAlgorithmException, InvalidKeyException {
         Mac mac = Mac.getInstance("HmacSHA256");

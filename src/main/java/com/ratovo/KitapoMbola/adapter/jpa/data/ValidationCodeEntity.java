@@ -23,6 +23,4 @@ public class ValidationCodeEntity {
     private String type;
     private Timestamp createdAt;
     private Timestamp validatedAt;
-    private Timestamp checkedAt;
-    private Boolean valid;
 }

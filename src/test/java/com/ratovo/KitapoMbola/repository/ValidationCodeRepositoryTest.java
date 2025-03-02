@@ -9,6 +9,7 @@ import com.ratovo.KitapoMbola.enumeration.ValidationCodeType;
 import com.ratovo.KitapoMbola.fixture.ValidationCodeFixture;
 import com.ratovo.KitapoMbola.port.ValidationCodeRepository;
 import lombok.SneakyThrows;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -31,9 +32,14 @@ public class ValidationCodeRepositoryTest {
         assertTrue(
                 generatedValidationCode.getCode() != null &&
                 generatedValidationCode.getCreatedAt() != null &&
-                generatedValidationCode.getValid() &&
                 generatedValidationCode.getValidatedAt() == null
         );
+    }
+
+    @AfterEach
+    void cleanDatabase(){
+        this.jpaRepository.deleteAll();
+        this.jpaRepository.flush();
     }
 
     @Test
@@ -48,8 +54,7 @@ public class ValidationCodeRepositoryTest {
         this.jpaRepository.saveAll(ValidationCodeFixture.codes.stream().map(ValidationCodeMapper::toData).toList());
         ValidationCodeRepository repository = new ValidationCodeDatabaseAdapter(jpaRepository);
         repository.invalidateCodeSentTo(ValidationCodeFixture.validTargetUuid);
-        List<ValidationCodeEntity> validationCodes = this.jpaRepository.findByTargetUuid(ValidationCodeFixture.validTargetUuid);
-        assertTrue(validationCodes.stream().noneMatch(ValidationCodeEntity::getValid));
+        assertTrue(this.jpaRepository.findByTargetUuid(ValidationCodeFixture.validTargetUuid).isEmpty());
     }
 
     @Test
@@ -57,7 +62,23 @@ public class ValidationCodeRepositoryTest {
         this.jpaRepository.saveAll(ValidationCodeFixture.codes.stream().map(ValidationCodeMapper::toData).toList());
         ValidationCodeRepository repository = new ValidationCodeDatabaseAdapter(jpaRepository);
         assertEquals(ValidationCodeFixture.code1,repository.findByCode(ValidationCodeFixture.code1.getCode(),ValidationCodeFixture.code1.getTargetUuid()));
+    }
 
+    @Test
+    void shouldFindValidatedCodeByCodeAndTargetUuid(){
+        this.jpaRepository.saveAll(ValidationCodeFixture.codes.stream().map(ValidationCodeMapper::toData).toList());
+        ValidationCodeRepository repository = new ValidationCodeDatabaseAdapter(jpaRepository);
+        assertEquals(
+                ValidationCodeFixture.code2,
+                repository.findValidatedCodeByTargetUuid(ValidationCodeFixture.code2.getTargetUuid())
+        );
+    }
+
+    @Test
+    void shouldOnlyFindValidatedCodeByCodeAndTargetUuid(){
+        this.jpaRepository.saveAll(List.of(ValidationCodeMapper.toData(ValidationCodeFixture.code3)));
+        ValidationCodeRepository repository = new ValidationCodeDatabaseAdapter(jpaRepository);
+        assertNull(repository.findValidatedCodeByTargetUuid(ValidationCodeFixture.code3.getTargetUuid()));
     }
 
 }

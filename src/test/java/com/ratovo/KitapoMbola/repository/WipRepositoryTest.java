@@ -64,4 +64,21 @@ public class WipRepositoryTest {
         WipUserRepository wipRepository = new WipUserDatabaseAdapter(jpaRepository);
         assertNull(wipRepository.findByEmail(WipFixture.wip1.getEmail()));
     }
+
+    @Test
+    @SneakyThrows
+    void shouldFindWipWithUuid(){
+        this.jpaRepository.saveAll(WipFixture.wipUsers.stream().map(WipUserMapper::toData).toList());
+        WipUserRepository wipRepository = new WipUserDatabaseAdapter(jpaRepository);
+        assertEquals(WipFixture.wip1,wipRepository.findByUuid(WipFixture.wip1.getUuid()));
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldDeleteWip(){
+        this.jpaRepository.saveAll(WipFixture.wipUsers.stream().map(WipUserMapper::toData).toList());
+        WipUserRepository wipRepository = new WipUserDatabaseAdapter(jpaRepository);
+        wipRepository.removeWipAccount(WipFixture.wip1.getUuid());
+        assertTrue(this.jpaRepository.findByUuid(WipFixture.wip1.getUuid()).isEmpty());
+    }
 }

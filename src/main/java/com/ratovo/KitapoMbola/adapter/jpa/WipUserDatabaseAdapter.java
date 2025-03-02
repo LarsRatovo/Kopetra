@@ -28,4 +28,16 @@ public class WipUserDatabaseAdapter implements WipUserRepository {
         existingData.ifPresent(wipUserEntity -> data.setId(wipUserEntity.getId()));
         this.jpaRepository.save(data);
     }
+
+    @Override
+    public WipUser findByUuid(String uuid) {
+        Optional<WipUserEntity> optional = jpaRepository.findByUuid(uuid);
+        return optional.map(WipUserMapper::toDomain).orElse(null);
+    }
+
+    @Override
+    public void removeWipAccount(String uuid) {
+        Optional<WipUserEntity> optional = jpaRepository.findByUuid(uuid);
+        optional.ifPresent(this.jpaRepository::delete);
+    }
 }

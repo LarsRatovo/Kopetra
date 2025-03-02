@@ -13,8 +13,6 @@ public class ValidationCodeMapper {
                 .type(ValidationCodeType.valueOf(data.getType()))
                 .validatedAt(data.getValidatedAt())
                 .createdAt(data.getCreatedAt())
-                .checkedAt(data.getCheckedAt())
-                .valid(data.getValid())
                 .build();
     }
 
@@ -26,8 +24,6 @@ public class ValidationCodeMapper {
                 .type(domain.getType().name())
                 .createdAt(domain.getCreatedAt())
                 .validatedAt(domain.getValidatedAt())
-                .checkedAt(domain.getCheckedAt())
-                .valid(domain.getValid())
                 .build();
     }
 }

@@ -42,12 +42,17 @@ public class ValidationCodeDatabaseAdapter implements ValidationCodeRepository {
 
     @Override
     public void invalidateCodeSentTo(String targetUuid) {
-        this.jpaRepository.invalidateCodeSentToTarget(targetUuid);
+        this.jpaRepository.deleteAllByTargetUuid(targetUuid);
     }
 
     @Override
     public ValidationCode findByCode(String code, String targetUuid) {
         Optional<ValidationCodeEntity> optional = this.jpaRepository.findByCodeAndTargetUuid(code, targetUuid);
         return optional.map(ValidationCodeMapper::toDomain).orElse(null);
+    }
+
+    @Override
+    public ValidationCode findValidatedCodeByTargetUuid(String targetUuid) {
+        return this.jpaRepository.findByTargetUuidAndValidatedAtIsNotNull(targetUuid).map(ValidationCodeMapper::toDomain).orElse(null);
     }
 }

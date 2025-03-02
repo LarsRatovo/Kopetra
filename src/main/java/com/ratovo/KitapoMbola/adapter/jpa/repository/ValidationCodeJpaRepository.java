@@ -12,8 +12,6 @@ public interface ValidationCodeJpaRepository extends JpaRepository<ValidationCod
     Optional<ValidationCodeEntity> findByCode(String code);
     Optional<ValidationCodeEntity> findByCodeAndTargetUuid(String code, String targetUuid);
     List<ValidationCodeEntity> findByTargetUuid(String targetUuid);
-
-    @Modifying(clearAutomatically = true)
-    @Query(value = "UPDATE ValidationCodeEntity cv SET cv.valid = false WHERE cv.valid = true AND (cv.validatedAt IS NULL OR cv.checkedAt IS NULL ) AND cv.targetUuid = ?1")
-    void invalidateCodeSentToTarget(String targetUuid);
+    void deleteAllByTargetUuid(String targetUuid);
+    Optional<ValidationCodeEntity> findByTargetUuidAndValidatedAtIsNotNull(String targetUuid);
 }
