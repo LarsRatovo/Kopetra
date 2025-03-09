@@ -34,4 +34,9 @@ public class UserController {
             @RequestParam @Pattern(regexp = "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*\\W).{8,}",message = "Le mot de passe est invalide") String password) throws LogicException {
         return userService.createAccountBasedOnWip(wip,password);
     }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestParam String username,@RequestParam String password) throws LogicException {
+        return this.userService.login(username,password);
+    }
 }

@@ -1,11 +1,9 @@
 package com.ratovo.KitapoMbola.useCase;
 
-import com.ratovo.KitapoMbola.domain.Login;
-import com.ratovo.KitapoMbola.domain.User;
-import com.ratovo.KitapoMbola.domain.ValidationCode;
-import com.ratovo.KitapoMbola.domain.WipUser;
+import com.ratovo.KitapoMbola.domain.*;
 import com.ratovo.KitapoMbola.dto.request.WipUpsertRequestDto;
 import com.ratovo.KitapoMbola.enumeration.ValidationCodeType;
+import com.ratovo.KitapoMbola.exception.BadCredentialException;
 import com.ratovo.KitapoMbola.exception.EmailAlreadyUsedException;
 import com.ratovo.KitapoMbola.exception.InvalidCodeException;
 import com.ratovo.KitapoMbola.exception.InvalidWipException;
@@ -76,5 +74,11 @@ public class UserUseCase {
                 .build());
         this.validationCodeRepository.invalidateCodeSentTo(wipUuid);
         this.wipRepository.removeWipAccount(wipUuid);
+    }
+
+    public String login(String username, String password) throws BadCredentialException {
+        String token = this.userRepository.login(Login.builder().email(username).password(password).build());
+        if(token == null) throw new BadCredentialException();
+        return token;
     }
 }

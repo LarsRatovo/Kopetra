@@ -4,8 +4,10 @@ import com.ratovo.KitapoMbola.domain.ValidationCode;
 import com.ratovo.KitapoMbola.domain.WipUser;
 import com.ratovo.KitapoMbola.dto.request.WipUpsertRequestDto;
 import com.ratovo.KitapoMbola.enumeration.ValidationCodeType;
+import com.ratovo.KitapoMbola.exception.BadCredentialException;
 import com.ratovo.KitapoMbola.exception.InvalidCodeException;
 import com.ratovo.KitapoMbola.exception.InvalidWipException;
+import com.ratovo.KitapoMbola.fixture.UserFixture;
 import com.ratovo.KitapoMbola.fixture.ValidationCodeFixture;
 import com.ratovo.KitapoMbola.fixture.WipFixture;
 import com.ratovo.KitapoMbola.port.*;
@@ -159,5 +161,19 @@ validationCode ->
         assertThrows(InvalidWipException.class,()->{
             this.useCase.createAccount(WipFixture.wip1.getUuid(),"abcdeF1;");
         });
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldLogIn(){
+        when(this.userRepository.login(eq(UserFixture.login1))).thenReturn(UserFixture.tokenFixture);
+        assertEquals(UserFixture.tokenFixture,this.useCase.login(UserFixture.login1.getEmail(),UserFixture.login1.getPassword()));
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldThrowBadCredentialException(){
+        when(this.userRepository.login(eq(UserFixture.login1))).thenReturn(null);
+        assertThrows(BadCredentialException.class,() -> this.useCase.login(UserFixture.login1.getEmail(),UserFixture.login1.getPassword()));
     }
 }

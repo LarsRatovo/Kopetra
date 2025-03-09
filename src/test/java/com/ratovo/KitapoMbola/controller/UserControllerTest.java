@@ -3,8 +3,10 @@ package com.ratovo.KitapoMbola.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ratovo.KitapoMbola.dto.request.WipUpsertRequestDto;
 import com.ratovo.KitapoMbola.dto.response.UpsertWipResponseDto;
+import com.ratovo.KitapoMbola.exception.BadCredentialException;
 import com.ratovo.KitapoMbola.exception.EmailAlreadyUsedException;
 import com.ratovo.KitapoMbola.exception.InvalidCodeException;
+import com.ratovo.KitapoMbola.fixture.UserFixture;
 import com.ratovo.KitapoMbola.fixture.ValidationCodeFixture;
 import com.ratovo.KitapoMbola.fixture.WipFixture;
 import com.ratovo.KitapoMbola.service.UserService;
@@ -14,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -120,4 +121,27 @@ public class UserControllerTest {
         .andExpect(jsonPath("messages").value("Le mot de passe est invalide"));
     }
 
+    @Test
+    @SneakyThrows
+    void shouldLogin(){
+        when(this.userUseCase.login(anyString(),anyString())).thenReturn(UserFixture.tokenFixture);
+        this.mockMvc.perform(
+                MockMvcRequestBuilders.post("/users/login")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .content("username=login@mail.com&password=password")
+        ).andExpect(status().isOk())
+        .andExpect(content().string(UserFixture.tokenFixture));
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldThrowNoLoginFound(){
+        when(this.userUseCase.login(anyString(),anyString())).thenThrow(new BadCredentialException());
+        this.mockMvc.perform(
+                        MockMvcRequestBuilders.post("/users/login")
+                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                .content("username=login@mail.com&password=password")
+                ).andExpect(status().is4xxClientError())
+                .andExpect(jsonPath("messages").value(BadCredentialException.defaultMessage));
+    }
 }

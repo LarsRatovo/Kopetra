@@ -7,4 +7,6 @@ public interface UserRepository {
     User findByEmail(String email);
     void createUser(User user);
     void createLogin(Login login);
+
+    String login(Login login);
 }

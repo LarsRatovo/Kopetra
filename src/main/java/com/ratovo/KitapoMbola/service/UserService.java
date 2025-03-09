@@ -30,4 +30,8 @@ public class UserService {
         this.userUseCase.createAccount(wip,password);
         return new ResponseEntity<>(new UpsertWipResponseDto(wip),HttpStatus.OK);
     }
+
+    public ResponseEntity<?> login(String username, String password) throws LogicException {
+        return new ResponseEntity<>(this.userUseCase.login(username,password),HttpStatus.OK);
+    }
 }
