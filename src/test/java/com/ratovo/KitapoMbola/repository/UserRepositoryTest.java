@@ -20,8 +20,7 @@ import org.springframework.util.DigestUtils;
 import java.security.MessageDigest;
 import java.util.Base64;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
 public class UserRepositoryTest {
@@ -31,7 +30,7 @@ public class UserRepositoryTest {
 
     @Test
     void shouldReturnExistingUserWithEmail(){
-        this.jpaRepository.save(UserMapper.toData(UserFixture.user1));
+        this.jpaRepository.saveAll(UserFixture.users.stream().map(UserMapper::toData).toList());
         UserRepository userRepository = new UserDatabaseAdapter(jpaRepository,null);
         User foundUser = userRepository.findByEmail(UserFixture.user1.getEmail());
         assertEquals(UserFixture.user1,foundUser);
@@ -47,9 +46,9 @@ public class UserRepositoryTest {
     @Test
     @SneakyThrows
     void shouldCreateLogin(){
-        this.jpaRepository.save(UserMapper.toData(UserFixture.user1));
+        this.jpaRepository.saveAll(UserFixture.users.stream().map(UserMapper::toData).toList());
         UserRepository userRepository = new UserDatabaseAdapter(jpaRepository,null);
-        userRepository.createLogin(UserFixture.login1);
+        userRepository.saveLogin(UserFixture.login1);
         UserEntity user = this.jpaRepository.findByEmail(UserFixture.user1.getEmail()).orElse(null);
         assertTrue(
                 user != null &&
@@ -72,5 +71,22 @@ public class UserRepositoryTest {
         assertEquals(node.get("uuid").textValue(), UserFixture.user1.getUuid());
         assertEquals(node.get("firstName").textValue(), UserFixture.user1.getFirstName());
         assertEquals(node.get("lastName").textValue(), UserFixture.user1.getLastName());
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldReturnTheUser(){
+        this.jpaRepository.saveAll(UserFixture.users.stream().map(UserMapper::toData).toList());
+        UserRepository userRepository = new UserDatabaseAdapter(jpaRepository, Jwts.SIG.HS256.key().build());
+        User user = userRepository.findByUuid(UserFixture.user1.getUuid());
+        assertEquals(UserFixture.user1,user);
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldReturnNull(){
+        UserRepository userRepository = new UserDatabaseAdapter(jpaRepository, Jwts.SIG.HS256.key().build());
+        User user = userRepository.findByUuid(UserFixture.user1.getUuid());
+        assertNull(user);
     }
 }

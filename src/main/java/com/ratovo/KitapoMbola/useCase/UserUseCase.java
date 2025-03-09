@@ -3,18 +3,11 @@ package com.ratovo.KitapoMbola.useCase;
 import com.ratovo.KitapoMbola.domain.*;
 import com.ratovo.KitapoMbola.dto.request.WipUpsertRequestDto;
 import com.ratovo.KitapoMbola.enumeration.ValidationCodeType;
-import com.ratovo.KitapoMbola.exception.BadCredentialException;
-import com.ratovo.KitapoMbola.exception.EmailAlreadyUsedException;
-import com.ratovo.KitapoMbola.exception.InvalidCodeException;
-import com.ratovo.KitapoMbola.exception.InvalidWipException;
+import com.ratovo.KitapoMbola.exception.*;
 import com.ratovo.KitapoMbola.port.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 
@@ -35,28 +28,16 @@ public class UserUseCase {
             wipUser.setUuid(UUID.randomUUID().toString());
         }
         this.wipRepository.save(wipUser);
-        ValidationCode registrationCode = this.validationCodeRepository.generateCode(ValidationCodeType.REGISTRATION);
-        registrationCode.setTargetUuid(wipUser.getUuid());
-        this.validationCodeRepository.invalidateCodeSentTo(wipUser.getUuid());
-        this.mailRepository.sendMail(ValidationCodeType.REGISTRATION.getMailSubject(), wipUser.getEmail(),ValidationCodeRepository.getMailContent(registrationCode.getCode()));
+        ValidationCode registrationCode = this.validationCodeRepository.generateCode(ValidationCodeType.REGISTRATION,wipUser.getUuid());
+        this.mailRepository.sendMail(ValidationCodeType.REGISTRATION.getMailSubject(), wipUser.getEmail(),ValidationCodeRepository.getMailContent(registrationCode.getCode(),ValidationCodeType.REGISTRATION));
         this.validationCodeRepository.save(registrationCode);
         return wipUser.getUuid();
-    }
-
-    public void validateCode(String uuid,String code) throws InvalidCodeException {
-        ValidationCode validationCode = this.validationCodeRepository.findByCode(code,uuid);
-        Timestamp now = Timestamp.from(Instant.now());
-        if(validationCode == null || validationCode.getValidatedAt() != null) throw new InvalidCodeException();
-        LocalDateTime validationDeadLine = validationCode.getCreatedAt().toLocalDateTime().plusMinutes(30);
-        if(now.toLocalDateTime().isAfter(validationDeadLine)) throw new InvalidCodeException();
-        validationCode.setValidatedAt(now);
-        this.validationCodeRepository.save(validationCode);
     }
 
     @Transactional
     public void createAccount(String wipUuid, String password) throws InvalidWipException {
         WipUser wipUser = this.wipRepository.findByUuid(wipUuid);
-        if(wipUser == null) throw new InvalidWipException();
+        validateWipUser(wipUser);
         ValidationCode registrationCode = this.validationCodeRepository.findValidatedCodeByTargetUuid(wipUuid);
         if( registrationCode == null || registrationCode.getType() != ValidationCodeType.REGISTRATION || registrationCode.getValidatedAt() == null) {
             throw new InvalidWipException();
@@ -68,7 +49,7 @@ public class UserUseCase {
                 .lastName(wipUser.getLastName())
                 .build();
         this.userRepository.createUser(user);
-        this.userRepository.createLogin(Login.builder()
+        this.userRepository.saveLogin(Login.builder()
                         .email(user.getEmail())
                         .password(password)
                 .build());
@@ -76,9 +57,37 @@ public class UserUseCase {
         this.wipRepository.removeWipAccount(wipUuid);
     }
 
+    private void validateWipUser(WipUser wipUser) throws InvalidWipException {
+        if(wipUser == null) throw new InvalidWipException();
+        if(wipUser.getEmail() == null || wipUser.getEmail().isEmpty()) throw new InvalidWipException();
+        if(wipUser.getFirstName() == null || wipUser.getFirstName().isEmpty()) throw new InvalidWipException();
+        if(wipUser.getLastName() == null || wipUser.getLastName().isEmpty()) throw new InvalidWipException();
+    }
+
     public String login(String username, String password) throws BadCredentialException {
         String token = this.userRepository.login(Login.builder().email(username).password(password).build());
         if(token == null) throw new BadCredentialException();
         return token;
+    }
+
+    public String forgotPassword(String email) throws UserNotFoundException {
+        User user = this.userRepository.findByEmail(email);
+        if(user == null) throw new UserNotFoundException();
+        ValidationCode resetPasswordCode = this.validationCodeRepository.generateCode(ValidationCodeType.PASSWORD_RESET,user.getUuid());
+        this.mailRepository.sendMail(ValidationCodeType.PASSWORD_RESET.getMailSubject(), user.getEmail(),ValidationCodeRepository.getMailContent(resetPasswordCode.getCode(),ValidationCodeType.PASSWORD_RESET));
+        this.validationCodeRepository.save(resetPasswordCode);
+        return user.getUuid();
+    }
+
+    public void resetPassword(String userUuid,String password) throws UserNotFoundException,InvalidCodeException {
+        User user = this.userRepository.findByUuid(userUuid);
+        if(user == null) throw new UserNotFoundException();
+        ValidationCode resetPasswordCode = this.validationCodeRepository.findValidatedCodeByTargetUuid(userUuid);
+        if(resetPasswordCode == null || resetPasswordCode.getType() != ValidationCodeType.PASSWORD_RESET || resetPasswordCode.getValidatedAt() == null) throw new InvalidCodeException();
+        this.userRepository.saveLogin(Login.builder()
+                .email(user.getEmail())
+                .password(password)
+                .build());
+        this.validationCodeRepository.invalidateCodeSentTo(userUuid);
     }
 }

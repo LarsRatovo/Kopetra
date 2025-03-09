@@ -39,6 +39,6 @@ public class ExceptionResolver extends DefaultHandlerExceptionResolver {
 
     @ExceptionHandler(LogicException.class)
     public ResponseEntity<?> handleConstraintViolation(LogicException exception, HttpServletRequest request) {
-        return new ResponseEntity<>(ErrorResponseDto.builder().messages(List.of(exception.getMessage())).build(), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(ErrorResponseDto.builder().messages(List.of(exception.getDefaultMessage())).build(), HttpStatus.BAD_REQUEST);
     }
 }

@@ -23,11 +23,6 @@ public class UserController {
         return userService.upsertWipAccount(email,wip);
     }
 
-    @PostMapping("/wip/{uuid}/validate")
-    public ResponseEntity<?> validateWipAccount(@PathVariable String uuid,@RequestParam String code) throws LogicException {
-        return userService.validateCode(uuid,code);
-    }
-
     @PostMapping
     public ResponseEntity<?> createAccount(
             @RequestParam String wip,
@@ -38,5 +33,15 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestParam String username,@RequestParam String password) throws LogicException {
         return this.userService.login(username,password);
+    }
+
+    @GetMapping("/{username}/forgot-password")
+    public ResponseEntity<?> resetPassword(@PathVariable String username) throws LogicException {
+        return this.userService.resetPassword(username);
+    }
+
+    @PostMapping("/{userUuid}/reset-password")
+    public ResponseEntity<?> updatePassword(@PathVariable String userUuid,@RequestParam @Pattern(regexp = "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*\\W).{8,}",message = "Le mot de passe est invalide") String password) throws LogicException {
+        return this.userService.updatePassword(userUuid,password);
     }
 }

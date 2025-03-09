@@ -1,7 +1,6 @@
 package com.ratovo.KitapoMbola.repository;
 
 import com.ratovo.KitapoMbola.adapter.jpa.ValidationCodeDatabaseAdapter;
-import com.ratovo.KitapoMbola.adapter.jpa.data.ValidationCodeEntity;
 import com.ratovo.KitapoMbola.adapter.jpa.mapper.ValidationCodeMapper;
 import com.ratovo.KitapoMbola.adapter.jpa.repository.ValidationCodeJpaRepository;
 import com.ratovo.KitapoMbola.domain.ValidationCode;
@@ -28,7 +27,7 @@ public class ValidationCodeRepositoryTest {
     @SneakyThrows
     void shouldGenerateValidationCode(){
         ValidationCodeRepository repository = new ValidationCodeDatabaseAdapter(jpaRepository);
-        ValidationCode generatedValidationCode = repository.generateCode(ValidationCodeType.REGISTRATION);
+        ValidationCode generatedValidationCode = repository.generateCode(ValidationCodeType.REGISTRATION,ValidationCodeFixture.validTargetUuid);
         assertTrue(
                 generatedValidationCode.getCode() != null &&
                 generatedValidationCode.getCreatedAt() != null &&

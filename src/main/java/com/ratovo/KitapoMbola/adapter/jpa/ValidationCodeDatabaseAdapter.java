@@ -20,8 +20,9 @@ public class ValidationCodeDatabaseAdapter implements ValidationCodeRepository {
     private final ValidationCodeJpaRepository jpaRepository;
 
     @Override
-    public ValidationCode generateCode(ValidationCodeType type) {
+    public ValidationCode generateCode(ValidationCodeType type,String targetUuid) {
         try {
+            this.jpaRepository.deleteAllByTargetUuid(targetUuid);
             Timestamp timestamp = Timestamp.valueOf(LocalDateTime.now());
             String secretKey = "lkegitp==";
             String code = ValidationCodeRepository.generateCode(secretKey,timestamp.getTime());

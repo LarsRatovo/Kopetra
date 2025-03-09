@@ -12,7 +12,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
 public interface ValidationCodeRepository {
-    ValidationCode generateCode(ValidationCodeType type);
+    ValidationCode generateCode(ValidationCodeType type,String targetUuid);
     void save(ValidationCode code);
     void invalidateCodeSentTo(String targetUuid);
     ValidationCode findByCode(String code,String targetUuid);
@@ -26,9 +26,14 @@ public interface ValidationCodeRepository {
         return Base64.getEncoder().encodeToString(hash).substring(0,6);
     }
 
-    static String getMailContent(String code){
+    static String getMailContent(String code,ValidationCodeType type){
         ClassLoader classLoader = ValidationCodeRepository.class.getClassLoader();
-        try(InputStream inputStream = classLoader.getResourceAsStream("static/mail.html")){
+        String mailSource = null;
+        switch (type){
+            case REGISTRATION -> mailSource = "static/register-mail.html";
+            case PASSWORD_RESET -> mailSource = "static/password-reset-mail.html";
+        }
+        try(InputStream inputStream = classLoader.getResourceAsStream(mailSource)){
             if(inputStream == null)throw new IOException();
             return new String(inputStream.readAllBytes()).replace("{{code}}",code);
         }catch (IOException e){

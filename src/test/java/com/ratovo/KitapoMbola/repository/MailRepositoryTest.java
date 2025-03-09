@@ -1,6 +1,5 @@
 package com.ratovo.KitapoMbola.repository;
 
-import com.icegreen.greenmail.junit5.GreenMailExtension;
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
 import com.ratovo.KitapoMbola.adapter.MailAdapter;

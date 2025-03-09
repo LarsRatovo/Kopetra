@@ -23,6 +23,12 @@ public class UserDatabaseAdapter implements UserRepository {
     private final SecretKey secretKey;
 
     @Override
+    public User findByUuid(String uuid) {
+        Optional<UserEntity> optional = this.JpaRepository.findByUuid(uuid);
+        return optional.map(UserMapper::toDomain).orElse(null);
+    }
+
+    @Override
     public User findByEmail(String email) {
         Optional<UserEntity> optional = JpaRepository.findByEmail(email);
         return optional.map(UserMapper::toDomain).orElse(null);
@@ -34,7 +40,7 @@ public class UserDatabaseAdapter implements UserRepository {
     }
 
     @Override
-    public void createLogin(Login login) {
+    public void saveLogin(Login login) {
         Optional<UserEntity> optional = JpaRepository.findByEmail(login.getEmail());
         if(optional.isPresent()) {
             UserEntity user = optional.get();

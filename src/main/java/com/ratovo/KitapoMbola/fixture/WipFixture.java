@@ -40,9 +40,6 @@ public class WipFixture {
 
         wip2 = WipUser.builder()
                 .uuid(UUID.randomUUID().toString())
-                .email("2@wip.com")
-                .firstName("second")
-                .lastName("wip")
                 .build();
         wipUsers = Arrays.asList(wip1, wip2);
     }

@@ -1,5 +1,6 @@
 package com.ratovo.KitapoMbola.useCase;
 
+import com.ratovo.KitapoMbola.domain.Login;
 import com.ratovo.KitapoMbola.domain.ValidationCode;
 import com.ratovo.KitapoMbola.domain.WipUser;
 import com.ratovo.KitapoMbola.dto.request.WipUpsertRequestDto;
@@ -7,6 +8,7 @@ import com.ratovo.KitapoMbola.enumeration.ValidationCodeType;
 import com.ratovo.KitapoMbola.exception.BadCredentialException;
 import com.ratovo.KitapoMbola.exception.InvalidCodeException;
 import com.ratovo.KitapoMbola.exception.InvalidWipException;
+import com.ratovo.KitapoMbola.exception.UserNotFoundException;
 import com.ratovo.KitapoMbola.fixture.UserFixture;
 import com.ratovo.KitapoMbola.fixture.ValidationCodeFixture;
 import com.ratovo.KitapoMbola.fixture.WipFixture;
@@ -45,7 +47,7 @@ public class UserUseCaseTest {
     @SneakyThrows
     void shouldCreateWipUser(){
         UUID uuid = UUID.randomUUID();
-        when(validationCodeRepository.generateCode(eq(ValidationCodeType.REGISTRATION))).thenReturn(ValidationCodeFixture.ok);
+        when(validationCodeRepository.generateCode(eq(ValidationCodeType.REGISTRATION),eq(uuid.toString()))).thenReturn(ValidationCodeFixture.ok);
         doNothing().when(wipRepository).save(any(WipUser.class));
         try (MockedStatic<UUID> mockedUuid = mockStatic(UUID.class)) {
             mockedUuid.when(UUID::randomUUID).thenReturn(uuid);
@@ -58,24 +60,26 @@ public class UserUseCaseTest {
     @Test
     @SneakyThrows
     void shouldSendAndSaveValidationCode(){
-        when(validationCodeRepository.generateCode(eq(ValidationCodeType.REGISTRATION))).thenReturn(ValidationCodeFixture.ok);
+        when(validationCodeRepository.generateCode(eq(ValidationCodeType.REGISTRATION),anyString())).thenReturn(ValidationCodeFixture.ok);
         doNothing().when(validationCodeRepository).save(any(ValidationCode.class));
-        String uuid = this.useCase.upsertWipUser(WipFixture.validWip.getEmail(),WipFixture.validWip);
-
-        verify(mailRepository).sendMail(ValidationCodeType.REGISTRATION.getMailSubject(), WipFixture.validWip.getEmail(),ValidationCodeRepository.getMailContent(ValidationCodeFixture.ok.getCode()));
-        verify(validationCodeRepository).invalidateCodeSentTo(uuid);
-        verify(validationCodeRepository).save(argThat(
-                validationCode ->
-                        Objects.equals(uuid,validationCode.getTargetUuid()) &&
-                                Objects.equals(validationCode.getCode(),ValidationCodeFixture.ok.getCode()) &&
-                                Objects.equals(validationCode.getType(),ValidationCodeType.REGISTRATION)
-        ));
+        UUID uuid = UUID.fromString(ValidationCodeFixture.ok.getTargetUuid());
+        try(MockedStatic<UUID> mockedUuid = mockStatic(UUID.class)){
+            mockedUuid.when(UUID::randomUUID).thenReturn(uuid);
+           String wipUuid = this.useCase.upsertWipUser(WipFixture.validWip.getEmail(),WipFixture.validWip);
+            verify(validationCodeRepository).save(argThat(
+                    validationCode ->
+                            Objects.equals(wipUuid,validationCode.getTargetUuid()) &&
+                                    Objects.equals(validationCode.getCode(),ValidationCodeFixture.ok.getCode()) &&
+                                    Objects.equals(validationCode.getType(),ValidationCodeType.REGISTRATION)
+            ));
+        }
+        verify(mailRepository).sendMail(ValidationCodeType.REGISTRATION.getMailSubject(), WipFixture.validWip.getEmail(),ValidationCodeRepository.getMailContent(ValidationCodeFixture.ok.getCode(),ValidationCodeType.REGISTRATION));
     }
 
     @Test
     @SneakyThrows
     void shouldUpdateExistingWipUser(){
-        when(validationCodeRepository.generateCode(eq(ValidationCodeType.REGISTRATION))).thenReturn(ValidationCodeFixture.ok);
+        when(validationCodeRepository.generateCode(eq(ValidationCodeType.REGISTRATION),anyString())).thenReturn(ValidationCodeFixture.ok);
         when(wipRepository.findByEmail(anyString())).thenReturn(WipFixture.wip1);
         doNothing().when(wipRepository).save(any(WipUser.class));
         WipUpsertRequestDto updateWip =  WipUpsertRequestDto
@@ -95,35 +99,9 @@ public class UserUseCaseTest {
 
     @Test
     @SneakyThrows
-    void shouldValidateCode(){
-        when(validationCodeRepository.findByCode(eq(ValidationCodeFixture.code3.getCode()),eq(ValidationCodeFixture.validTargetUuid))).thenReturn(new ValidationCode(ValidationCodeFixture.code3));
-        this.useCase.validateCode(ValidationCodeFixture.validTargetUuid,ValidationCodeFixture.code3.getCode());
-        verify(validationCodeRepository).save(argThat(
-validationCode ->
-                validationCode.getTargetUuid().equals(ValidationCodeFixture.validTargetUuid) &&
-                validationCode.getCreatedAt().before(validationCode.getValidatedAt())
-        ));
-    }
-
-    @Test
-    @SneakyThrows
-    void shouldInValidateCodeWhenNull(){
-        when(validationCodeRepository.findByCode(anyString(),anyString())).thenReturn(null);
-        assertThrows(InvalidCodeException.class, () -> this.useCase.validateCode(anyString(),anyString()));
-    }
-
-    @Test
-    @SneakyThrows
-    void shouldInvalidateCodeWhenAlreadyValidated(){
-        when(validationCodeRepository.findByCode(anyString(),anyString())).thenReturn(ValidationCodeFixture.code2);
-        assertThrows(InvalidCodeException.class, () -> this.useCase.validateCode(ValidationCodeFixture.code2.getTargetUuid(),ValidationCodeFixture.code2.getCode()));
-    }
-
-    @Test
-    @SneakyThrows
     void shouldCreateUser(){
         when(this.wipRepository.findByUuid(WipFixture.wip1.getUuid())).thenReturn(WipFixture.wip1);
-        when(this.validationCodeRepository.findValidatedCodeByTargetUuid(WipFixture.wip1.getUuid())).thenReturn(new ValidationCode(ValidationCodeFixture.code2));
+        when(this.validationCodeRepository.findValidatedCodeByTargetUuid(WipFixture.wip1.getUuid())).thenReturn(ValidationCodeFixture.code2);
         UUID userUuid = UUID.randomUUID();
         try (MockedStatic<UUID> uuidMock = Mockito.mockStatic(UUID.class)) {
             uuidMock.when(UUID::randomUUID).thenReturn(userUuid);
@@ -138,7 +116,7 @@ validationCode ->
             arg.getFirstName().equals(WipFixture.wip1.getFirstName()) &&
             arg.getLastName().equals(WipFixture.wip1.getLastName())
         ));
-        verify(this.userRepository).createLogin(argThat( arg->
+        verify(this.userRepository).saveLogin(argThat( arg->
             arg.getEmail().equals(WipFixture.wip1.getEmail()) &&
             arg.getPassword().equals("abcdeF1;")
         ));
@@ -148,7 +126,7 @@ validationCode ->
     @SneakyThrows
     void shouldThrowInvalidWipExceptionByCodeVerification(){
         when(this.wipRepository.findByUuid(WipFixture.wip1.getUuid())).thenReturn(WipFixture.wip1);
-        when(this.validationCodeRepository.findValidatedCodeByTargetUuid(ValidationCodeFixture.code3.getTargetUuid())).thenReturn(new ValidationCode(ValidationCodeFixture.code3));
+        when(this.validationCodeRepository.findValidatedCodeByTargetUuid(ValidationCodeFixture.code3.getTargetUuid())).thenReturn(ValidationCodeFixture.code3);
         assertThrows(InvalidWipException.class,()->{
             this.useCase.createAccount(WipFixture.wip1.getUuid(),"abcdeF1;");
         });
@@ -157,9 +135,10 @@ validationCode ->
     @Test
     @SneakyThrows
     void shouldThrowInvalidWipMandatoryDataException(){
-        when(this.wipRepository.findByUuid(WipFixture.wip1.getUuid())).thenReturn(WipFixture.wip2);
+        when(this.wipRepository.findByUuid(WipFixture.wip2.getUuid())).thenReturn(WipFixture.wip2);
+        when(this.validationCodeRepository.findValidatedCodeByTargetUuid(anyString())).thenReturn(ValidationCodeFixture.code2);
         assertThrows(InvalidWipException.class,()->{
-            this.useCase.createAccount(WipFixture.wip1.getUuid(),"abcdeF1;");
+            this.useCase.createAccount(WipFixture.wip2.getUuid(),"abcdeF1;");
         });
     }
 
@@ -175,5 +154,64 @@ validationCode ->
     void shouldThrowBadCredentialException(){
         when(this.userRepository.login(eq(UserFixture.login1))).thenReturn(null);
         assertThrows(BadCredentialException.class,() -> this.useCase.login(UserFixture.login1.getEmail(),UserFixture.login1.getPassword()));
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldProceedToForgottenPasswordFlow(){
+        when(this.validationCodeRepository.generateCode(any(ValidationCodeType.class),anyString())).thenReturn(ValidationCodeFixture.passwordResetCode);
+        when(this.userRepository.findByEmail(eq(UserFixture.user1.getEmail()))).thenReturn(UserFixture.user1);
+        String uuid = this.useCase.forgotPassword(UserFixture.user1.getEmail());
+        verify(mailRepository).sendMail(ValidationCodeType.PASSWORD_RESET.getMailSubject(), UserFixture.user1.getEmail(),ValidationCodeRepository.getMailContent(ValidationCodeFixture.passwordResetCode.getCode(),ValidationCodeType.PASSWORD_RESET));
+        verify(validationCodeRepository).save(argThat(
+                validationCode ->
+                        Objects.equals(UserFixture.user1.getUuid(),validationCode.getTargetUuid()) &&
+                                Objects.equals(validationCode.getCode(),ValidationCodeFixture.passwordResetCode.getCode()) &&
+                                Objects.equals(validationCode.getType(),ValidationCodeType.PASSWORD_RESET)
+        ));
+        assertEquals(UserFixture.user1.getUuid(),uuid);
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldThrowNoUserFoundWhileResetPassword(){
+        when(this.userRepository.findByEmail(anyString())).thenReturn(null);
+        assertThrows(UserNotFoundException.class,()->{
+            this.useCase.forgotPassword(UserFixture.user1.getEmail());
+        });
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldResetPassword(){
+        when(this.userRepository.findByUuid(UserFixture.user1.getUuid())).thenReturn(UserFixture.user1);
+        when(this.validationCodeRepository.findValidatedCodeByTargetUuid(anyString())).thenReturn(ValidationCodeFixture.checkedPasswordResetCode);
+        this.useCase.resetPassword(UserFixture.user1.getUuid(),"newPassword");
+        verify(userRepository).saveLogin(
+                Login.builder()
+                        .email(UserFixture.user1.getEmail())
+                        .password("newPassword")
+                        .build()
+        );
+        verify(validationCodeRepository).invalidateCodeSentTo(argThat(arg -> arg.equals(UserFixture.user1.getUuid())));
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldNotFoundUserWhileResetPassword(){
+        when(this.userRepository.findByUuid(anyString())).thenReturn(null);
+        assertThrows(UserNotFoundException.class,()->{
+            this.useCase.resetPassword(UserFixture.user1.getUuid(),"newPassword");
+        });
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldThrowInvalidCodeWhileResetPassword(){
+        when(this.userRepository.findByUuid(anyString())).thenReturn(UserFixture.user1);
+        when(this.validationCodeRepository.findValidatedCodeByTargetUuid(anyString())).thenReturn(ValidationCodeFixture.passwordResetCode);
+        assertThrows(InvalidCodeException.class,()->{
+            this.useCase.resetPassword(UserFixture.user1.getUuid(),"newPassword");
+        });
     }
 }
